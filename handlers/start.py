@@ -6,38 +6,55 @@ from aiogram.filters.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
 from keyboards import replykeyboards, inlinekeyboards
-from create_bot import bot, dp
+from create_bot import bot
 from payment.yoomoney import bill
 from Google_sheets.manager_sheets import get_value_from_sheet
-from views import start_view
+from views import start_view, parser
+from database.requests import get_user
 
 
 start_router = Router()
 
 
-
 class CallbackOnStart(StatesGroup):
     Q1 = State()
 
-#стартовое сообщение бота
+
 @start_router.message(CommandStart())
 async def cmd_start(message: Message):
-    await message.answer('Надеюсь быть полезным для вас)', 
+    user_id = message.from_user.id
+    link = message.from_user.username
+    if link in ["l0cal_host", "PranKyzy", "Max6406", "z1ngger19"]:
+        await get_user(user_id)
+        await message.answer('ёбаный баклажан', 
                          reply_markup=replykeyboards.main_kb())
+    else:
+        await message.answer('а по ебальничку?🤗')
 
 
 #вызов ссылки на яндекс карты
 @start_router.message(F.text.lower() == 'яндекс карты')
 async def call_inline(message: Message):
-    await message.answer('Ссылка на карту:',
-                         reply_markup=inlinekeyboards.yandex_map_inline())
+    image = await start_view.generate_image(967)
+
+    image_path = 'weeks_image.png'
+    image.save(image_path)
+
+    with open(image_path, 'rb') as file:
+        await bot.send_photo(chat_id=message.chat.id, photo=file)
 
 
 #вызов ссылки на яндекс карты
-@start_router.message(F.text.lower() == 'ссылка на оплату')
-async def get_url_bill(message: Message):
-    await message.answer('Ссылка на оплату:',
-                         reply_markup=inlinekeyboards.url_bill_inline(bill()))
+@start_router.message(F.text.lower() == 'таски')
+async def get_tasks(message: Message):
+    link = message.from_user.username
+    if not link in ["l0cal_host", "PranKyzy", "Max6406", "z1ngger19"]:
+        await message.answer('а по ебальничку?🤗')
+        return
+    data = parser.request_to_tasks()
+    tasks = parser.get_list_by_tasks(data)
+    await message.answer(tasks,
+                         reply_markup=replykeyboards.main_kb())
     
 #получение значения из поля А2
 @start_router.message(F.text == 'Значение из А2')
